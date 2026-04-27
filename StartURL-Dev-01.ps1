@@ -1,20 +1,62 @@
-##================================================
-## MARK: Variables
-##================================================
-    $backgroundColor = "Black"
-    $foregroundColor = "Green"
+##=======================================================================
+##   Mark: Variables and Constants
+##=======================================================================
+# --- SetupComplete Script URLs ---
+$UriSetupComplete = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.ps1'
+$UriSetupCompleteCmd = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.cmd'
+$UriInstallLCU = 'https://github.com/Lenander88/EDU/raw/dev/Install-LCU.ps1'
+$UriEDUCSV = 'https://raw.githubusercontent.com/Lenander88/EDU/dev/EDU.csv'
 
-    # EDU Build CSV
-    $csvPath = ".\EDU.csv"
-    $csvUrl  = 'https://raw.githubusercontent.com/Lenander88/EDU/dev/EDU.csv'
+# --- Status and Initialization Messages ---
+$MsgStartOSDCloud = "Start OSDCloud ZTI"
+$MsgUpdateOSDModule = "Updating OSD PowerShell Module"
+$MsgImportOSDModule = "Importing OSD PowerShell Module"
+$MsgStartOSDCloudDeploy = "Starting OSDCloud"
+$MsgStageSetupComplete = "Staging SetupComplete"
+$MsgRestartIn20Seconds = "Restarting in 20 seconds"
 
-    # Write-Host texts
-    $startText  = "Starting EDU Build Selection"
-    $selectText = "Select EDU Build"
-    $credText   = "Enter Local Account Credentials"
 
-    # SetupComplete folder path
-    $setupPath = 'C:\OSDCloud\Scripts\SetupComplete'
+# --- UI Dialog Messages ---
+$MsgEDUTitle = "EDU Build Selection"
+$MsgEDULabel = "Build"
+$MsgOKButton = "OK"
+$MsgOSDCloudTitle = "OSDCloud"
+$MsgWarning = "Warning"
+$MsgSelectValidOption = "Please select a valid EDU build."
+$MsgStartText  = "Starting EDU Build Selection"
+$MsgSelectText = "Select EDU Build"
+$MsgCredText   = "Enter Local Account Credentials"
+$MsgInjectingCredentials = "Injecting credentials into SetupComplete script"
+
+# --- UI Styling ---
+$BackgroundColor = "Black"
+$ForegroundColor = "Green"
+
+# --- File Paths and Settings ---
+$EDUCSVPath = ".\EDU.csv"
+$PSWindowsUpdateModulePath = 'C:\Program Files\WindowsPowerShell\Modules'
+$SetupCompleteOutPath = 'C:\Windows\Setup\Scripts\SetupComplete.ps1'
+$SetupCompleteCmdOutPath = 'C:\OSDCloud\Scripts\SetupComplete\SetupComplete.cmd'
+$InstallLCUOutPath = 'C:\OSDCloud\Scripts\SetupComplete\Install-LCU.ps1'
+$SetupPath = 'C:\OSDCloud\Scripts\SetupComplete'
+$LogRoot = 'X:\OSDCloud\Logs'
+$TranscriptPath = Join-Path $LogRoot 'StartURL-Dev-01.log'
+
+function Stop-TranscriptSafe {
+    try {
+        Stop-Transcript | Out-Null
+    } catch {
+    }
+}
+
+if (-not (Test-Path $LogRoot)) {
+    New-Item -Path $LogRoot -ItemType Directory -Force | Out-Null
+}
+try {
+    Start-Transcript -Path $TranscriptPath -ErrorAction Stop | Out-Null
+} catch {
+    Write-Warning "Could not start transcript at $TranscriptPath: $($_.Exception.Message)"
+}
 
 ##=======================================================================
 ##   [PreOS] Params
@@ -28,15 +70,10 @@ $Params = @{
     ZTI        = $true
     Firmware   = $false
 }
-
 ##=======================================================================
-##   [PreOS] Update Module
-##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Updating OSD PowerShell Module"
-Install-Module OSD -Force -SkipPublisherCheck
-
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Importing OSD PowerShell Module"
-Import-Module OSD -Force
+## [PreOS] Scrpt Start
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartText
+Start-Sleep -Seconds 5
 
 ##=======================================================================
 ##   [PreOS] Group all Add-Type calls together
@@ -47,58 +84,78 @@ Import-Module OSD -Force
 ##=======================================================================
 ##   [PreOS] EDU Build Selection
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor $startText
-Start-Sleep -Seconds 5
 
 # Download EDU.csv if missing or older than 1 day
-if (!(Test-Path $csvPath) -or ((Get-Item $csvPath).LastWriteTime -lt (Get-Date).AddDays(-1))) {
-    Invoke-WebRequest -Uri $csvUrl -OutFile $csvPath -UseBasicParsing
+if (!(Test-Path $EDUCSVPath) -or ((Get-Item $EDUCSVPath).LastWriteTime -lt (Get-Date).AddDays(-1))) {
+    Invoke-WebRequest -Uri $UriEDUCSV -OutFile $EDUCSVPath -UseBasicParsing
 }
-$options = Import-CSV $csvPath
+$options = Import-CSV $EDUCSVPath
 
     # Create Form
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = $selectText
-    $form.Size = New-Object System.Drawing.Size(300,150)
+    $form.Text = $MsgEDUTitle
+    $form.Size = New-Object System.Drawing.Size(350, 150)
     $form.StartPosition = "CenterScreen"
+
+    # Create Label
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = $MsgEDULabel
+    $label.Location = New-Object System.Drawing.Point(20, 20)
+    $label.Size = New-Object System.Drawing.Size(100, 20)
+    $form.Controls.Add($label)
 
     # Create ComboBox
     $comboBox = New-Object System.Windows.Forms.ComboBox
-    $comboBox.Location = New-Object System.Drawing.Point(50,20)
-    $comboBox.Size = New-Object System.Drawing.Size(200,20)
+    $comboBox.Location = New-Object System.Drawing.Point(120, 20)
+    $comboBox.Size = New-Object System.Drawing.Size(200, 20)
     $comboBox.DropDownStyle = 'DropDownList'
 
+    # populate ComboBox with options from CSV
     foreach ($item in $options) {
-        $comboBox.Items.Add($item.EDU)
+        $comboBox.Items.Add($item.OptionName)
     }
+
+    # Add ComboBox to Form
     $form.Controls.Add($comboBox)
 
     # Create OK Button
     $okButton = New-Object System.Windows.Forms.Button
-    $okButton.Text = "OK"
-    $okButton.Location = New-Object System.Drawing.Point(100,60)
+    $okButton.Text = $MsgOKButton
+    $okButton.Location = New-Object System.Drawing.Point(120,60)
+    $okButton.Cursor = [System.Windows.Forms.Cursors]::Hand
 
+    # OK Button Click Event Handler
     $okButtonClickHandler = {
         $selectedOption = $comboBox.SelectedItem
         if ($selectedOption) {
-            $global:edu         = ($options | Where-Object { $_.EDU -eq $selectedOption }).Command
+            # Assign corresponding value to global variable based on selection
+            $global:edu         = ($options | Where-Object { $_.OptionName -eq $selectedOption }).Value
             $global:eduSiteName = $selectedOption
             $form.Close()
         } else {
-            [System.Windows.Forms.MessageBox]::Show("Please select an option.")
+            # No selection made, show warning message
+            [System.Windows.Forms.MessageBox]::Show($MsgSelectValidOption)
         }
     }
     $okButton.Add_Click($okButtonClickHandler)
     $form.Controls.Add($okButton)
+
+    # Show Form
     $form.ShowDialog()
+
+if ([string]::IsNullOrWhiteSpace($global:edu)) {
+    Write-Error "No EDU build selected. Aborting deployment flow."
+    Stop-TranscriptSafe
+    exit 1
+}
 
 ##=======================================================================
 ##   [PreOS] Credential Input GUI
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor $credText
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgCredText
 
     $credForm = New-Object System.Windows.Forms.Form
-    $credForm.Text = $credText
+    $credForm.Text = $MsgCredText
     $credForm.Size = New-Object System.Drawing.Size(360, 310)
     $credForm.StartPosition = "CenterScreen"
     $credForm.FormBorderStyle = 'FixedDialog'
@@ -193,53 +250,100 @@ Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor $
     $credForm.AcceptButton = $credOkButton
     $credForm.ShowDialog()
 
+if (
+    [string]::IsNullOrWhiteSpace($global:LocalUserName) -or
+    [string]::IsNullOrWhiteSpace($global:LocalUserPassword) -or
+    [string]::IsNullOrWhiteSpace($global:ComputerNamePrefix)
+) {
+    Write-Error "Credential dialog was cancelled or required values were empty. Aborting deployment flow."
+    Stop-TranscriptSafe
+    exit 1
+}
+
 Write-Host "  Username       : $global:LocalUserName"
 Write-Host "  Full Name      : $global:LocalUserFullName"
 Write-Host "  Computer Prefix: $global:ComputerNamePrefix"
 Write-Host "  Password       : [protected]"
 
+
 ##=======================================================================
-##   [OS] Start-OSDCloud with Params
+##   [PreOS] Update Module
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Start OSDCloud"
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgUpdateOSDModule
+Install-Module OSD -Force -SkipPublisherCheck
+
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgImportOSDModule
+Import-Module OSD -Force
+
+##===================================================================
+##   [PreOS] OS Installation
+##===================================================================
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartOSDCloudDeploy
 Start-OSDCloud @Params
 
 ##=======================================================================
 ##   [PostOS] SetupComplete CMD Command Line
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Stage SetupComplete"
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStageSetupComplete
 
 # Ensure PSWindowsUpdate is staged for post-boot use
-Save-Module -Name PSWindowsUpdate -Path 'C:\Program Files\WindowsPowerShell\Modules' -Force
+Save-Module -Name PSWindowsUpdate -Path $PSWindowsUpdateModulePath -Force
 
 # Ensure SetupComplete folder exists
-if (-not (Test-Path $setupPath)) {
-    New-Item -Path $setupPath -ItemType Directory -Force | Out-Null
+if (-not (Test-Path $SetupPath)) {
+    New-Item -Path $SetupPath -ItemType Directory -Force | Out-Null
 }
 
 # Run the selected EDU SetupComplete download command (from ComboBox selection)
-Invoke-Expression $global:edu
+$eduCommand = ($global:edu -replace "'\s*-OutFile", "' -OutFile").Trim()
+
+if ($eduCommand -notmatch "^Invoke-WebRequest\s+-Uri\s+'(?<Uri>https://[^']+)'\s+-OutFile\s+(?<OutFile>.+)$") {
+    Write-Error "Selected EDU command is malformed and cannot be executed safely."
+    Stop-TranscriptSafe
+    exit 1
+}
+
+$selectedUri = $matches['Uri']
+$selectedOutFile = $matches['OutFile'].Trim().Trim("'").Trim('"')
+if ($selectedOutFile -ne $SetupCompleteOutPath) {
+    Write-Error "Selected EDU command writes to unexpected path '$selectedOutFile'. Expected '$SetupCompleteOutPath'."
+    Stop-TranscriptSafe
+    exit 1
+}
+if ($selectedUri -notmatch '^https://(raw\.githubusercontent\.com/Lenander88/EDU/dev|github\.com/Lenander88/EDU/raw/dev)/.+\.ps1$') {
+    Write-Error "Selected EDU command URI is outside the approved EDU repository path: $selectedUri"
+    Stop-TranscriptSafe
+    exit 1
+}
+
+Invoke-Expression $eduCommand
 
 # Download Install-LCU.ps1
-Invoke-WebRequest -Uri 'https://github.com/Lenander88/EDU/raw/dev/Install-LCU.ps1' -OutFile "$setupPath\Install-LCU.ps1" -UseBasicParsing
+Invoke-WebRequest -Uri $UriInstallLCU -OutFile $InstallLCUOutPath -UseBasicParsing
 
 ##=======================================================================
 ##   [PostOS] Inject Credentials into SetupComplete script
 ##   Replaces the hardcoded credential variables in the downloaded
 ##   SetupComplete.ps1 so the correct account is created on first boot.
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Injecting credentials into SetupComplete script"
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgInjectingCredentials
 
-$setupScript = Get-Item -Path 'C:\Windows\Setup\Scripts\SetupComplete.ps1' -ErrorAction SilentlyContinue
+$setupScript = Get-Item -Path $SetupCompleteOutPath -ErrorAction SilentlyContinue
 
 if ($setupScript) {
     $content = Get-Content -Path $setupScript.FullName -Raw
 
-    $content = $content -replace "(?m)^\`$LocalUserName\s*=\s*'[^']*'",        "`$LocalUserName = '$($global:LocalUserName)'"
-    $content = $content -replace "(?m)^\`$LocalUserPassword\s*=\s*'[^']*'",    "`$LocalUserPassword = '$($global:LocalUserPassword)'"
-    $content = $content -replace "(?m)^\`$LocalUserFullName\s*=\s*'[^']*'",    "`$LocalUserFullName = '$($global:LocalUserFullName)'"
-    $content = $content -replace "(?m)^\`$LocalUserDescription\s*=\s*'[^']*'", "`$LocalUserDescription = '$($global:LocalUserDescription)'"
-    $content = $content -replace "(?m)^\`$ComputerNamePrefix\s*=\s*'[^']*'",   "`$ComputerNamePrefix = '$($global:ComputerNamePrefix)'"
+    $escapedLocalUserName = $global:LocalUserName -replace "'", "''"
+    $escapedLocalUserPassword = $global:LocalUserPassword -replace "'", "''"
+    $escapedLocalUserFullName = $global:LocalUserFullName -replace "'", "''"
+    $escapedLocalUserDescription = $global:LocalUserDescription -replace "'", "''"
+    $escapedComputerNamePrefix = $global:ComputerNamePrefix -replace "'", "''"
+
+    $content = $content -replace "(?m)^\`$LocalUserName\s*=\s*'[^']*'",        "\`$LocalUserName = '$escapedLocalUserName'"
+    $content = $content -replace "(?m)^\`$LocalUserPassword\s*=\s*'[^']*'",    "\`$LocalUserPassword = '$escapedLocalUserPassword'"
+    $content = $content -replace "(?m)^\`$LocalUserFullName\s*=\s*'[^']*'",    "\`$LocalUserFullName = '$escapedLocalUserFullName'"
+    $content = $content -replace "(?m)^\`$LocalUserDescription\s*=\s*'[^']*'", "\`$LocalUserDescription = '$escapedLocalUserDescription'"
+    $content = $content -replace "(?m)^\`$ComputerNamePrefix\s*=\s*'[^']*'",   "\`$ComputerNamePrefix = '$escapedComputerNamePrefix'"
 
     Set-Content -Path $setupScript.FullName -Value $content -Force
     Write-Host "  Credentials injected into: $($setupScript.FullName)"
@@ -250,6 +354,7 @@ if ($setupScript) {
 ##=======================================================================
 ##   Restart-Computer
 ##=======================================================================
-Write-Host -BackgroundColor $backgroundColor -ForegroundColor $foregroundColor "Restart in 20 seconds"
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgRestartIn20Seconds
 Start-Sleep -Seconds 20
+Stop-TranscriptSafe
 wpeutil reboot
