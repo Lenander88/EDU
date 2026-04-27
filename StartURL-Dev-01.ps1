@@ -2,8 +2,6 @@
 ##   Mark: Variables and Constants
 ##=======================================================================
 # --- SetupComplete Script URLs ---
-$UriSetupComplete = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.ps1'
-$UriSetupCompleteCmd = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.cmd'
 $UriInstallLCU = 'https://github.com/Lenander88/EDU/raw/dev/Install-LCU.ps1'
 $UriEDUCSV = 'https://raw.githubusercontent.com/Lenander88/EDU/dev/EDU.csv'
 
@@ -20,11 +18,8 @@ $MsgRestartIn20Seconds = "Restarting in 20 seconds"
 $MsgEDUTitle = "EDU Build Selection"
 $MsgEDULabel = "Build"
 $MsgOKButton = "OK"
-$MsgOSDCloudTitle = "OSDCloud"
-$MsgWarning = "Warning"
 $MsgSelectValidOption = "Please select a valid EDU build."
 $MsgStartText  = "Starting EDU Build Selection"
-$MsgSelectText = "Select EDU Build"
 $MsgCredText   = "Enter Local Account Credentials"
 $MsgInjectingCredentials = "Injecting credentials into SetupComplete script"
 $MsgUsername = "Username is required."
@@ -41,7 +36,6 @@ $ForegroundColor = "Green"
 $EDUCSVPath = ".\EDU.csv"
 $PSWindowsUpdateModulePath = 'C:\Program Files\WindowsPowerShell\Modules'
 $SetupCompleteOutPath = 'C:\Windows\Setup\Scripts\SetupComplete.ps1'
-$SetupCompleteCmdOutPath = 'C:\OSDCloud\Scripts\SetupComplete\SetupComplete.cmd'
 $InstallLCUOutPath = 'C:\OSDCloud\Scripts\SetupComplete\Install-LCU.ps1'
 $SetupPath = 'C:\OSDCloud\Scripts\SetupComplete'
 $LogRoot = 'X:\OSDCloud\Logs'
@@ -76,12 +70,13 @@ $Params = @{
     Firmware   = $false
 }
 ##=======================================================================
-## [PreOS] Scrpt Start
-Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartText
+## [PreOS] Script Start
+##=======================================================================
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartOSDCloud
 Start-Sleep -Seconds 5
 
 ##=======================================================================
-##   [PreOS] Group all Add-Type calls together
+##   [PreOS] Initialize Assembly Types
 ##=======================================================================
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
@@ -89,6 +84,7 @@ Start-Sleep -Seconds 5
 ##=======================================================================
 ##   [PreOS] EDU Build Selection
 ##=======================================================================
+Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartText
 
 # Download EDU.csv if missing or older than 1 day
 if (!(Test-Path $EDUCSVPath) -or ((Get-Item $EDUCSVPath).LastWriteTime -lt (Get-Date).AddDays(-1))) {
@@ -315,7 +311,7 @@ if ($selectedOutFile -ne $SetupCompleteOutPath) {
     Stop-TranscriptSafe
     exit 1
 }
-if ($selectedUri -notmatch '^https://(raw\.githubusercontent\.com/Lenander88/EDU/dev|github\.com/Lenander88/EDU/raw/dev)/.+\.ps1$') {
+if ($selectedUri -notmatch '^https://(raw\.githubusercontent\.com/Lenander88/EDU/dev|github\.com/Lenander88/EDU/raw/dev)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.ps1$') {
     Write-Error "Selected EDU command URI is outside the approved EDU repository path: $selectedUri"
     Stop-TranscriptSafe
     exit 1
