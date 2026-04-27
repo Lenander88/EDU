@@ -54,7 +54,7 @@ if (-not (Test-Path $LogRoot)) {
 try {
     Start-Transcript -Path $TranscriptPath -ErrorAction Stop | Out-Null
 } catch {
-    Write-Warning "Could not start transcript at $TranscriptPath: $($_.Exception.Message)"
+    Write-Warning "Could not start transcript at ${TranscriptPath}: $($_.Exception.Message)"
 }
 
 ##=======================================================================
