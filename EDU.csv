@@ -1,6 +1,6 @@
 ﻿OptionName,Value
-Standard,Invoke-WebRequest -Uri 'https://github.com/lenander88/OSDCloud/raw/dev/SetupComplete.ps1' -OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
-Stockholm,Invoke-WebRequest -Uri 'https://github.com/lenander88/OSDCloud/raw/dev/Setup_Stockholm.ps1'-OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
+Standard,Invoke-WebRequest -Uri 'https://github.com/lenander88/EDU/raw/dev/SetupComplete.ps1' -OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
+Stockholm,Invoke-WebRequest -Uri 'https://github.com/lenander88/EDU/raw/dev/Setup_Stockholm.ps1'-OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
 Ballerup,Invoke-WebRequest -Uri 'https://github.com/lenander88/EDU/raw/dev/Setup_Ballerup.ps1'-OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
 Eskilstuna,Invoke-WebRequest -Uri 'https://github.com/lenander88/EDU/raw/dev/Setup_Eskilstuna.ps1'-OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1
 Landskrona,Invoke-WebRequest -Uri 'https://github.com/lenander88/EDU/raw/dev/Setup_Landskrona.ps1'-OutFile C:\Windows\Setup\Scripts\SetupComplete.ps1

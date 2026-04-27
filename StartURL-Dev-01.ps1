@@ -27,6 +27,11 @@ $MsgStartText  = "Starting EDU Build Selection"
 $MsgSelectText = "Select EDU Build"
 $MsgCredText   = "Enter Local Account Credentials"
 $MsgInjectingCredentials = "Injecting credentials into SetupComplete script"
+$MsgUsername = "Username is required."
+$MsgPassword = "Password is required."
+$MsgPasswordMismatch = "Passwords do not match."
+$MsgComputerPrefix = "Computer Name Prefix is required."
+$MsgDescription = "Local administrator account for EDU purposes"
 
 # --- UI Styling ---
 $BackgroundColor = "Black"
@@ -203,7 +208,7 @@ Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $
     # Description
     $credForm.Controls.Add((New-Label "Description:"      20, 160))
     $txtDescription = New-TextBox 160 160
-    $txtDescription.Text = "Local administrator account for EDU purposes"
+    $txtDescription.Text = $MsgDescription
     $credForm.Controls.Add($txtDescription)
 
     # Computer Name Prefix
@@ -220,22 +225,22 @@ Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $
     $credOkButton.Add_Click({
         # Validate required fields
         if ([string]::IsNullOrWhiteSpace($txtUsername.Text)) {
-            [System.Windows.Forms.MessageBox]::Show("Username is required.", "Validation Error")
+            [System.Windows.Forms.MessageBox]::Show($MsgUsername, "Validation Error")
             return
         }
         if ([string]::IsNullOrWhiteSpace($txtPassword.Text)) {
-            [System.Windows.Forms.MessageBox]::Show("Password is required.", "Validation Error")
+            [System.Windows.Forms.MessageBox]::Show($MsgPassword, "Validation Error")
             return
         }
         if ($txtPassword.Text -ne $txtConfirm.Text) {
-            [System.Windows.Forms.MessageBox]::Show("Passwords do not match.", "Validation Error")
+            [System.Windows.Forms.MessageBox]::Show($MsgPasswordMismatch, "Validation Error")
             $txtPassword.Clear()
             $txtConfirm.Clear()
             $txtPassword.Focus()
             return
         }
         if ([string]::IsNullOrWhiteSpace($txtPrefix.Text)) {
-            [System.Windows.Forms.MessageBox]::Show("Computer Name Prefix is required.", "Validation Error")
+            [System.Windows.Forms.MessageBox]::Show($MsgComputerPrefix, "Validation Error")
             return
         }
         $global:LocalUserName        = $txtUsername.Text.Trim()
