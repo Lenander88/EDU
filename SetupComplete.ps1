@@ -102,43 +102,30 @@ if (-not (Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker')) {
     New-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Force | Out-Null}
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Name 'PreventDeviceEncryption' -Value 1 -PropertyType DWord -Force | Out-Null
 
-# Stage unattend.xml so OOBE skips the device-name and private/work-school prompts.
-# SetupComplete runs before OOBE, so C:\Windows\Panther\unattend.xml is picked up by the oobeSystem pass.
-Write-Host 'Staging unattend.xml to suppress OOBE prompts'
-$panther = 'C:\Windows\Panther'
-if (-not (Test-Path $panther)) { New-Item -Path $panther -ItemType Directory -Force | Out-Null }
-$unattendContent = @'
-<?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
-  <settings pass="oobeSystem">
-    <component name="Microsoft-Windows-Shell-Setup"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <OOBE>
-        <!-- Skip "Name your device" prompt -->
-        <SkipMachineOOBE>true</SkipMachineOOBE>
-        <!-- Skip per-user OOBE (privacy settings, etc.) -->
-        <SkipUserOOBE>true</SkipUserOOBE>
-        <!-- Hide "How will you use this PC?" (personal/work-school) -->
-        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
-        <!-- Hide local account creation screen (account is provisioned by SetupComplete) -->
-        <HideLocalAccountScreen>true</HideLocalAccountScreen>
-        <!-- Hide OEM registration, wireless setup, and EULA pages -->
-        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
-        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
-        <HideEULAPage>true</HideEULAPage>
-        <!-- Default network location to Work to suppress the private/public prompt -->
-        <NetworkLocation>Work</NetworkLocation>
-      </OOBE>
-    </component>
-  </settings>
-</unattend>
-'@
-Set-Content -Path "$panther\unattend.xml" -Value $unattendContent -Encoding UTF8 -Force
+# Configure OOBE suppression directly in registry for reliability in SetupComplete phase.
+Write-Host 'Configuring OOBE suppression flags'
+try {
+        $oobePath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE'
+        if (-not (Test-Path $oobePath)) { New-Item -Path $oobePath -Force | Out-Null }
+
+        New-ItemProperty -Path $oobePath -Name 'SkipMachineOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'SkipUserOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'HideOnlineAccountScreens' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'HideLocalAccountScreen' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'HideWirelessSetupInOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'HideEULAPage' -Value 1 -PropertyType DWord -Force | Out-Null
+        New-ItemProperty -Path $oobePath -Name 'UnattendCreatedUser' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        # BypassNRO prevents forced network/account path from re-enabling consumer OOBE prompts.
+        New-ItemProperty -Path $oobePath -Name 'BypassNRO' -Value 1 -PropertyType DWord -Force | Out-Null
+
+        # Keep the setup type on organizational flow to avoid personal/work-school chooser.
+        $setupOobePath = 'HKLM:\SYSTEM\Setup\OOBE'
+        if (-not (Test-Path $setupOobePath)) { New-Item -Path $setupOobePath -Force | Out-Null }
+        New-ItemProperty -Path $setupOobePath -Name 'SetupType' -Value 2 -PropertyType DWord -Force | Out-Null
+} catch {
+        Write-Warning "OOBE suppression configuration failed: $($_.Exception.Message)"
+}
 
 # Restore Balanced plan after tasks
 Write-Host 'Setting PowerPlan to Balanced'
