@@ -102,29 +102,14 @@ if (-not (Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker')) {
     New-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Force | Out-Null}
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Name 'PreventDeviceEncryption' -Value 1 -PropertyType DWord -Force | Out-Null
 
-# Configure OOBE suppression directly in registry for reliability in SetupComplete phase.
-Write-Host 'Configuring OOBE suppression flags'
+# Configure OOBE suppression as a backup (primary method via unattend.xml during deployment).
+Write-Host 'Configuring OOBE backup flags in registry'
 try {
-        $oobePath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE'
-        if (-not (Test-Path $oobePath)) { New-Item -Path $oobePath -Force | Out-Null }
-
-        New-ItemProperty -Path $oobePath -Name 'SkipMachineOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'SkipUserOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'HideOnlineAccountScreens' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'HideLocalAccountScreen' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'HideWirelessSetupInOOBE' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'HideEULAPage' -Value 1 -PropertyType DWord -Force | Out-Null
-        New-ItemProperty -Path $oobePath -Name 'UnattendCreatedUser' -Value 1 -PropertyType DWord -Force | Out-Null
-
-        # BypassNRO prevents forced network/account path from re-enabling consumer OOBE prompts.
-        New-ItemProperty -Path $oobePath -Name 'BypassNRO' -Value 1 -PropertyType DWord -Force | Out-Null
-
-        # Keep the setup type on organizational flow to avoid personal/work-school chooser.
-        $setupOobePath = 'HKLM:\SYSTEM\Setup\OOBE'
-        if (-not (Test-Path $setupOobePath)) { New-Item -Path $setupOobePath -Force | Out-Null }
-        New-ItemProperty -Path $setupOobePath -Name 'SetupType' -Value 2 -PropertyType DWord -Force | Out-Null
+    $setupOobePath = 'HKLM:\SYSTEM\Setup\OOBE'
+    if (-not (Test-Path $setupOobePath)) { New-Item -Path $setupOobePath -Force | Out-Null }
+    New-ItemProperty -Path $setupOobePath -Name 'UnattendCreatedUser' -Value 1 -PropertyType DWord -Force | Out-Null
 } catch {
-        Write-Warning "OOBE suppression configuration failed: $($_.Exception.Message)"
+    Write-Warning "OOBE backup configuration failed: $($_.Exception.Message)"
 }
 
 # Restore Balanced plan after tasks
