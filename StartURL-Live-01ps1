@@ -243,47 +243,53 @@ Import-Module OSD -Force
 ##===================================================================
 Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor "Staging unattend.xml for deployment"
 $unattendPath = 'X:\OSDCloud\unattend.xml'
-$unattendContent = @'
+$xmlSafeUser = [System.Security.SecurityElement]::Escape($global:LocalUserName)
+$xmlSafePassword = [System.Security.SecurityElement]::Escape($global:LocalUserPassword)
+$xmlSafeLanguage = [System.Security.SecurityElement]::Escape($global:OSLanguage)
+$unattendContent = @"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
   <settings pass="specialize">
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-      <ComputerName>WIN11PRO</ComputerName>
+      <ComputerName>*</ComputerName>
     </component>
   </settings>
   <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>$xmlSafeLanguage</InputLocale>
+      <SystemLocale>$xmlSafeLanguage</SystemLocale>
+      <UILanguage>$xmlSafeLanguage</UILanguage>
+      <UserLocale>$xmlSafeLanguage</UserLocale>
+    </component>
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-      <AutoLogon>
-        <Password>
-          <Value>placeholder</Value>
-          <PlainText>true</PlainText>
-        </Password>
-        <Enabled>false</Enabled>
-        <Username>placeholder</Username>
-      </AutoLogon>
       <OOBE>
         <HideEULAPage>true</HideEULAPage>
         <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
         <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
         <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <NetworkLocation>Work</NetworkLocation>
         <ProtectYourPC>3</ProtectYourPC>
         <SkipMachineOOBE>true</SkipMachineOOBE>
         <SkipUserOOBE>true</SkipUserOOBE>
       </OOBE>
-      <FirstLogonCommands>
-        <SynchronousCommand wcm:action="add">
-          <CommandLine>cmd /c net user placeholder /delete</CommandLine>
-          <Order>1</Order>
-        </SynchronousCommand>
-      </FirstLogonCommands>
-    </component>
-    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-      <UserLocale>en-us</UserLocale>
-      <UILanguage>en-us</UILanguage>
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>$xmlSafeUser</Name>
+            <Group>Administrators</Group>
+            <DisplayName>$xmlSafeUser</DisplayName>
+            <Password>
+              <Value>$xmlSafePassword</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
     </component>
   </settings>
 </unattend>
-'@
+"@
 Set-Content -Path $unattendPath -Value $unattendContent -Encoding UTF8 -Force
 Write-Host "  Unattend.xml staged at: $unattendPath"
 
@@ -292,6 +298,28 @@ Write-Host "  Unattend.xml staged at: $unattendPath"
 ##===================================================================
 Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $MsgStartOSDCloudDeploy
 Start-OSDCloud @Params
+
+##===================================================================
+##   [PostOS] Stage Unattend Into Installed OS
+##===================================================================
+$installedWindowsPath = 'C:\Windows'
+if (Test-Path $installedWindowsPath) {
+    $targetUnattendPaths = @(
+        'C:\Windows\Panther\Unattend.xml',
+        'C:\Windows\Panther\Unattend\Unattend.xml',
+        'C:\Windows\System32\Sysprep\Unattend.xml'
+    )
+    foreach ($targetUnattendPath in $targetUnattendPaths) {
+        $targetUnattendParent = Split-Path -Path $targetUnattendPath -Parent
+        if (-not (Test-Path $targetUnattendParent)) {
+            New-Item -Path $targetUnattendParent -ItemType Directory -Force | Out-Null
+        }
+        Copy-Item -Path $unattendPath -Destination $targetUnattendPath -Force
+    }
+    Write-Host "  Unattend.xml copied into installed OS paths"
+} else {
+    Write-Warning "Installed Windows path not found at $installedWindowsPath - unattend copy skipped"
+}
 
 ##===================================================================
 ##   [PreOS] Stage SetupComplete Scripts
