@@ -65,6 +65,21 @@ Start-Sleep -Seconds 5
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+##=======================================================================
+##   [PreOS] Virtual Machine Display Resolution
+##=======================================================================
+try {
+    $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+    $isVM = $cs.Model -match 'Virtual|VMware|VirtualBox|HVM' -or
+            $cs.Manufacturer -match 'Microsoft Corporation|VMware|innotek|Xen|QEMU'
+    if ($isVM) {
+        Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor "Virtual machine detected - setting resolution to 1280x768"
+        Set-DisRes 1280 768
+    }
+} catch {
+    Write-Warning "VM detection or resolution change failed: $($_.Exception.Message)"
+}
+
     ##===================================================================
     ##   [PreOS] OS Language Selection Dialog
     ##===================================================================

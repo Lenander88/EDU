@@ -59,6 +59,18 @@ try {
     Write-Warning "Local admin provisioning failed: $($_.Exception.Message)"
 }
 
+# Set hostname to EDU-<SerialNumber> (truncated to 15-char NetBIOS limit).
+try {
+    $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber.Trim()
+    $prefix  = 'EDU-'
+    if ($serial.Length -gt 9) { $serial = $serial.Substring(0, 9) }
+    $newName = "$prefix$serial"
+    Rename-Computer -NewName $newName -Force -ErrorAction Stop
+    Write-Host "Computer will be renamed to '$newName' after reboot"
+} catch {
+    Write-Warning "Hostname assignment failed: $($_.Exception.Message)"
+}
+
 # Power plan: High performance during post-setup
 Write-Host 'Setting PowerPlan to High Performance'
 powercfg /setactive DED574B5-45A0-4F42-8737-46345C09C238 | Out-Null
@@ -89,6 +101,44 @@ Write-Host -BackgroundColor Black -ForegroundColor Green "Disable Windows Automa
 if (-not (Test-Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker')) { 
     New-Item -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Force | Out-Null}
 New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLocker' -Name 'PreventDeviceEncryption' -Value 1 -PropertyType DWord -Force | Out-Null
+
+# Stage unattend.xml so OOBE skips the device-name and private/work-school prompts.
+# SetupComplete runs before OOBE, so C:\Windows\Panther\unattend.xml is picked up by the oobeSystem pass.
+Write-Host 'Staging unattend.xml to suppress OOBE prompts'
+$panther = 'C:\Windows\Panther'
+if (-not (Test-Path $panther)) { New-Item -Path $panther -ItemType Directory -Force | Out-Null }
+$unattendContent = @'
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <OOBE>
+        <!-- Skip "Name your device" prompt -->
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+        <!-- Skip per-user OOBE (privacy settings, etc.) -->
+        <SkipUserOOBE>true</SkipUserOOBE>
+        <!-- Hide "How will you use this PC?" (personal/work-school) -->
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <!-- Hide local account creation screen (account is provisioned by SetupComplete) -->
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <!-- Hide OEM registration, wireless setup, and EULA pages -->
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <!-- Default network location to Work to suppress the private/public prompt -->
+        <NetworkLocation>Work</NetworkLocation>
+      </OOBE>
+    </component>
+  </settings>
+</unattend>
+'@
+Set-Content -Path "$panther\unattend.xml" -Value $unattendContent -Encoding UTF8 -Force
 
 # Restore Balanced plan after tasks
 Write-Host 'Setting PowerPlan to Balanced'
