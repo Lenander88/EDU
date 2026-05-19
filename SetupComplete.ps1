@@ -1,6 +1,10 @@
 # OSDCloud SetupComplete.ps1; Location: C:\Windows\Setup\Scripts\SetupComplete.ps1
 # Logs setup process, imports OSD modules, sets power plan, runs custom SetupComplete.cmd, and reboots when finished.
 
+# These values are replaced by StartURL at deployment time.
+$LocalUserName = 'LocalAdmin'
+$LocalUserPassword = 'ChangeMe!123!'
+
 # Logging first
 $StartTime = Get-Date
 Start-Transcript -Path 'C:\OSDCloud\Logs\SetupComplete.log' -ErrorAction Ignore
@@ -22,6 +26,38 @@ try {
     Write-Warning "Could not load _anywhere.psm1: $($_.Exception.Message)"
 }
 Start-Sleep -Seconds 10
+
+# Ensure Microsoft Defender remains enabled.
+try {
+    Set-Service -Name WinDefend -StartupType Automatic -ErrorAction Stop
+    if ((Get-Service -Name WinDefend).Status -ne 'Running') {
+        Start-Service -Name WinDefend -ErrorAction Stop
+    }
+    Set-MpPreference -DisableRealtimeMonitoring $false -ErrorAction Stop
+} catch {
+    Write-Warning "Defender enablement check failed: $($_.Exception.Message)"
+}
+
+# Ensure the requested local admin account exists and is in Administrators.
+try {
+    $existingUser = Get-LocalUser -Name $LocalUserName -ErrorAction SilentlyContinue
+    $securePassword = ConvertTo-SecureString $LocalUserPassword -AsPlainText -Force
+
+    if (-not $existingUser) {
+        New-LocalUser -Name $LocalUserName -Password $securePassword -PasswordNeverExpires -AccountNeverExpires | Out-Null
+        Write-Host "Created local user '$LocalUserName'"
+    } else {
+        Set-LocalUser -Name $LocalUserName -Password $securePassword
+        Write-Host "Updated password for existing local user '$LocalUserName'"
+    }
+
+    if (-not (Get-LocalGroupMember -Group 'Administrators' -Member $LocalUserName -ErrorAction SilentlyContinue)) {
+        Add-LocalGroupMember -Group 'Administrators' -Member $LocalUserName -ErrorAction Stop
+        Write-Host "Added '$LocalUserName' to local Administrators group"
+    }
+} catch {
+    Write-Warning "Local admin provisioning failed: $($_.Exception.Message)"
+}
 
 # Power plan: High performance during post-setup
 Write-Host 'Setting PowerPlan to High Performance'
