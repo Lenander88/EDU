@@ -47,7 +47,7 @@ $Params = @{
     OSVersion = "Windows 11"
     OSBuild = "25H2" # "24H2" | "25H2"
     OSEdition = "Pro" # "Enterprise" | "Pro"
-    OSLanguage = "$global:OSLanguage" # Set dynamically based on user selection
+    OSLanguage = "en-us" # Overridden after language selection
     OSLicense = "Retail" # "Volume" | "Retail"
     ZTI = $true
     Firmware = $true
@@ -132,6 +132,8 @@ if ([string]::IsNullOrWhiteSpace($global:OSLanguage)) {
     Write-Error "No OS language selected. Aborting deployment flow."
     exit 1
 }
+
+$Params.OSLanguage = $global:OSLanguage
 
 ##===================================================================
 ##   [PreOS] Local Admin Credential Dialog
@@ -234,6 +236,10 @@ Write-Host -BackgroundColor $BackgroundColor -ForegroundColor $ForegroundColor $
 Save-Module -Name PSWindowsUpdate -Path $PSWindowsUpdateModulePath -Force # Stage PSWindowsUpdate so it's available after first boot (no PSGallery needed in pre-OOBE)
 if (-not (Test-Path $SetupPath)) {
     New-Item -Path $SetupPath -ItemType Directory -Force | Out-Null
+}
+$setupCompleteParent = Split-Path -Path $SetupCompleteOutPath -Parent
+if (-not (Test-Path $setupCompleteParent)) {
+    New-Item -Path $setupCompleteParent -ItemType Directory -Force | Out-Null
 }
 Invoke-WebRequest -Uri $UriSetupComplete -OutFile $SetupCompleteOutPath # Runs automatically after setup complete, during pre-OOBE. Calls the custom SetupComplete.cmd
 Invoke-WebRequest -Uri $UriSetupCompleteCmd -OutFile $SetupCompleteCmdOutPath # Custom SetupComplete.cmd, triggered by SetupComplete.ps1. Calls Install-LCU.ps1
