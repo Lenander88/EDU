@@ -13,8 +13,7 @@ Import-Module PSWindowsUpdate -Force
 
 # Pull latest SSU/LCU + critical updates - targeted for speed during OOBE
 # Only install Security Updates and Critical Updates (skip optional Updates)
-# TESTING: update installation temporarily disabled for faster test cycles.
-<#
+<
 $tries = 0
 while ($tries -lt 3) {
   try {
@@ -30,7 +29,7 @@ while ($tries -lt 3) {
 if ($tries -ge 3) {
     Write-Host "WARNING: Update installation failed after 3 attempts" -ForegroundColor Red
 }
-#>
+>
 # Timing & wrap-up
 $EndTime = Get-Date
 $RunTimeMinutes = [math]::Round((New-TimeSpan -Start $StartTime -End $EndTime).TotalMinutes, 0)
