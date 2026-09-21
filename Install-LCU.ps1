@@ -30,6 +30,16 @@ if ($tries -ge 3) {
     Write-Host "WARNING: Update installation failed after 3 attempts" -ForegroundColor Red
 }
 >
+
+# Trigger Microsoft Edge update
+try {
+  Start-Process -FilePath "C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe" `
+    -ArgumentList "/silent /install appguid={56EB18F8-B008-4CBD-B6D2-8C97FE7E9062}&appname=Microsoft%20Edge&needsadmin=True" `
+    -Wait -ErrorAction Stop
+} catch {
+  Write-Host "Microsoft Edge update was not started: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 # Timing & wrap-up
 $EndTime = Get-Date
 $RunTimeMinutes = [math]::Round((New-TimeSpan -Start $StartTime -End $EndTime).TotalMinutes, 0)
