@@ -2,12 +2,12 @@
 ##   Mark: Variables and Constants
 ##=======================================================================
 # --- External URLs ---
-$UriOSLanguage = 'https://github.com/Lenander88/EDU/raw/dev/OSLanguage.csv'
+$UriOSLanguage = 'https://github.com/Lenander88/EDU/raw/main/OSLanguage.csv'
 
 # --- SetupComplete Script URLs ---
-$UriSetupComplete = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.ps1'
-$UriSetupCompleteCmd = 'https://github.com/Lenander88/EDU/raw/dev/SetupComplete.cmd'
-$UriInstallLCU = 'https://github.com/Lenander88/EDU/raw/dev/Install-LCU.ps1'
+$UriSetupComplete = 'https://github.com/Lenander88/EDU/raw/main/SetupComplete.ps1'
+$UriSetupCompleteCmd = 'https://github.com/Lenander88/EDU/raw/main/SetupComplete.cmd'
+$UriInstallLCU = 'https://github.com/Lenander88/EDU/raw/main/Install-LCU.ps1'
 
 # --- Status and Initialization Messages ---
 $MsgStartOSDCloud = "Start OSDCloud ZTI"
